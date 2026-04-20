@@ -1,4 +1,6 @@
-exports.upvote = async (req, res) => {
+const { asyncWrapper } = require('../utils');
+
+exports.upvote = asyncWrapper(async (req, res) => {
   const { id } = req.user;
 
   if (req.answer) {
@@ -8,9 +10,9 @@ exports.upvote = async (req, res) => {
   }
   const question = await req.question.vote(id, 1);
   return res.json(question);
-};
+});
 
-exports.downvote = async (req, res) => {
+exports.downvote = asyncWrapper(async (req, res) => {
   const { id } = req.user;
 
   if (req.answer) {
@@ -20,9 +22,9 @@ exports.downvote = async (req, res) => {
   }
   const question = await req.question.vote(id, -1);
   return res.json(question);
-};
+});
 
-exports.unvote = async (req, res) => {
+exports.unvote = asyncWrapper(async (req, res) => {
   const { id } = req.user;
 
   if (req.answer) {
@@ -32,4 +34,4 @@ exports.unvote = async (req, res) => {
   }
   const question = await req.question.vote(id, 0);
   return res.json(question);
-};
+});

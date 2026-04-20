@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { connect } = require('../server');
+const { connect } = require('../index');
 const config = require('../config');
 
 const clearDb = (done) => {

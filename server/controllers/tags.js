@@ -1,46 +1,35 @@
 const Question = require('../models/question');
+const { asyncWrapper } = require('../utils');
 
-exports.listPopulerTags = async (req, res, next) => {
-  try {
-    const tags = await Question.aggregate([
-      { $project: { tags: 1 } },
-      { $unwind: '$tags' },
-      { $group: { _id: '$tags', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 25 }
-    ]);
-    res.json(tags);
-  } catch (error) {
-    next(error);
-  }
-};
+exports.listPopulerTags = asyncWrapper(async (req, res) => {
+  const tags = await Question.aggregate([
+    { $project: { tags: 1 } },
+    { $unwind: '$tags' },
+    { $group: { _id: '$tags', count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+    { $limit: 25 }
+  ]);
+  res.json(tags);
+});
 
-exports.listTags = async (req, res, next) => {
-  try {
-    const tags = await Question.aggregate([
-      { $project: { tags: 1 } },
-      { $unwind: '$tags' },
-      { $group: { _id: '$tags', count: { $sum: 1 } } },
-      { $sort: { count: -1 } }
-    ]);
-    res.json(tags);
-  } catch (error) {
-    next(error);
-  }
-};
+exports.listTags = asyncWrapper(async (req, res) => {
+  const tags = await Question.aggregate([
+    { $project: { tags: 1 } },
+    { $unwind: '$tags' },
+    { $group: { _id: '$tags', count: { $sum: 1 } } },
+    { $sort: { count: -1 } }
+  ]);
+  res.json(tags);
+});
 
-exports.searchTags = async (req, res, next) => {
+exports.searchTags = asyncWrapper(async (req, res) => {
   const { tag = '' } = req.params;
-  try {
-    const tags = await Question.aggregate([
-      { $project: { tags: 1 } },
-      { $unwind: '$tags' },
-      { $group: { _id: '$tags', count: { $sum: 1 } } },
-      { $match: { _id: { $regex: tag, $options: 'i' } } },
-      { $sort: { count: -1 } }
-    ]);
-    res.json(tags);
-  } catch (error) {
-    next(error);
-  }
-};
+  const tags = await Question.aggregate([
+    { $project: { tags: 1 } },
+    { $unwind: '$tags' },
+    { $group: { _id: '$tags', count: { $sum: 1 } } },
+    { $match: { _id: { $regex: tag, $options: 'i' } } },
+    { $sort: { count: -1 } }
+  ]);
+  res.json(tags);
+});

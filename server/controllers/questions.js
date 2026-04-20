@@ -1,6 +1,7 @@
 const Question = require('../models/question');
 const User = require('../models/user');
-const { body, validationResult } = require('express-validator');
+const { body } = require('express-validator');
+const { asyncWrapper, parsePagination } = require('../utils');
 
 exports.loadQuestions = async (req, res, next, id) => {
   try {
@@ -15,81 +16,52 @@ exports.loadQuestions = async (req, res, next, id) => {
   next();
 };
 
-exports.createQuestion = async (req, res, next) => {
-  const result = validationResult(req);
-  if (!result.isEmpty()) {
-    const errors = result.array({ onlyFirstError: true });
-    return res.status(422).json({ errors });
-  }
-  try {
-    const { title, tags, text } = req.body;
-    const author = req.user.id;
-    const question = await Question.create({
-      title,
-      author,
-      tags,
-      text
-    });
-    res.status(201).json(question);
-  } catch (error) {
-    next(error);
-  }
-};
+exports.createQuestion = asyncWrapper(async (req, res) => {
+  const { title, tags, text } = req.body;
+  const author = req.user.id;
+  const question = await Question.create({
+    title,
+    author,
+    tags,
+    text
+  });
+  res.status(201).json(question);
+});
 
-exports.show = async (req, res, next) => {
-  try {
-    const { id } = req.question;
-    const question = await Question.findByIdAndUpdate(
-      id,
-      { $inc: { views: 1 } },
-      { new: true }
-    ).populate('answers');
-    res.json(question);
-  } catch (error) {
-    next(error);
-  }
-};
+exports.show = asyncWrapper(async (req, res) => {
+  const { id } = req.question;
+  const question = await Question.findByIdAndUpdate(
+    id,
+    { $inc: { views: 1 } },
+    { new: true }
+  ).populate('answers');
+  res.json(question);
+});
 
-exports.listQuestions = async (req, res, next) => {
-  try {
-    const { sortType = '-score' } = req.body;
-    const questions = await Question.find().sort(sortType);
-    res.json(questions);
-  } catch (error) {
-    next(error);
-  }
-};
+exports.listQuestions = asyncWrapper(async (req, res) => {
+  const { sortType = '-score' } = req.body;
+  const questions = await Question.find().sort(sortType);
+  res.json(questions);
+});
 
-exports.listByTags = async (req, res, next) => {
-  try {
-    const { sortType = '-score', tags } = req.params;
-    const questions = await Question.find({ tags: { $all: tags } }).sort(sortType);
-    res.json(questions);
-  } catch (error) {
-    next(error);
-  }
-};
+exports.listByTags = asyncWrapper(async (req, res) => {
+  const { sortType = '-score', tags } = req.params;
+  const questions = await Question.find({ tags: { $all: tags } }).sort(sortType);
+  res.json(questions);
+});
 
-exports.listByUser = async (req, res, next) => {
-  try {
-    const { username } = req.params;
-    const { sortType = '-created' } = req.body;
-    const author = await User.findOne({ username });
-    const questions = await Question.find({ author: author.id }).sort(sortType).limit(10);
-    res.json(questions);
-  } catch (error) {
-    next(error);
-  }
-};
+exports.listByUser = asyncWrapper(async (req, res) => {
+  const { username } = req.params;
+  const { sortType } = parsePagination(req, 10, '-created');
+  const author = await User.findOne({ username });
+  const questions = await Question.find({ author: author.id }).sort(sortType).limit(10);
+  res.json(questions);
+});
 
-exports.removeQuestion = async (req, res, next) => {
-  try {
-    await req.question.remove();
-    res.json({ message: 'Your question successfully deleted.' });
-  } catch (error) {
-    next(error);
-  }
-};
+exports.removeQuestion = asyncWrapper(async (req, res) => {
+  await req.question.remove();
+  res.json({ message: 'Your question successfully deleted.' });
+});
 
 exports.loadComment = async (req, res, next, id) => {
   try {

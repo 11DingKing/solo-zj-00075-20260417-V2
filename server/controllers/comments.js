@@ -1,4 +1,5 @@
-const { body, validationResult } = require('express-validator');
+const { body } = require('express-validator');
+const { asyncWrapper } = require('../utils');
 
 exports.loadComments = async (req, res, next, id) => {
   try {
@@ -19,47 +20,32 @@ exports.loadComments = async (req, res, next, id) => {
   next();
 };
 
-exports.createComment = async (req, res, next) => {
-  const result = validationResult(req);
+exports.createComment = asyncWrapper(async (req, res) => {
+  const { id } = req.user;
+  const { comment } = req.body;
 
-  if (!result.isEmpty()) {
-    const errors = result.array({ onlyFirstError: true });
-    return res.status(422).json({ errors });
-  }
-
-  try {
-    const { id } = req.user;
-    const { comment } = req.body;
-
-    if (req.params.answer) {
-      req.answer.addComment(id, comment);
-      const question = await req.question.save();
-      return res.status(201).json(question);
-    }
-
-    const question = await req.question.addComment(id, comment);
+  if (req.params.answer) {
+    req.answer.addComment(id, comment);
+    const question = await req.question.save();
     return res.status(201).json(question);
-  } catch (error) {
-    next(error);
   }
-};
 
-exports.removeComment = async (req, res, next) => {
+  const question = await req.question.addComment(id, comment);
+  return res.status(201).json(question);
+});
+
+exports.removeComment = asyncWrapper(async (req, res) => {
   const { comment } = req.params;
 
-  try {
-    if (req.params.answer) {
-      req.answer.removeComment(comment);
-      const question = await req.question.save();
-      return res.json(question);
-    }
-
-    const question = await req.question.removeComment(comment);
+  if (req.params.answer) {
+    req.answer.removeComment(comment);
+    const question = await req.question.save();
     return res.json(question);
-  } catch (error) {
-    next(error);
   }
-};
+
+  const question = await req.question.removeComment(comment);
+  return res.json(question);
+});
 
 exports.validate = [
   body('comment')

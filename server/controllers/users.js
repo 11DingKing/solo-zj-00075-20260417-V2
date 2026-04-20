@@ -1,17 +1,12 @@
 const User = require('../models/user');
 const Question = require('../models/question');
 const jwtDecode = require('jwt-decode');
-const { body, validationResult } = require('express-validator');
+const { body } = require('express-validator');
 
 const { createToken, hashPassword, verifyPassword } = require('../utils/authentication');
+const { asyncWrapper, parsePagination } = require('../utils');
 
 exports.signup = async (req, res) => {
-  const result = validationResult(req);
-  if (!result.isEmpty()) {
-    const errors = result.array({ onlyFirstError: true });
-    return res.status(422).json({ errors });
-  }
-
   try {
     const { username } = req.body;
 
@@ -68,11 +63,6 @@ exports.signup = async (req, res) => {
 };
 
 exports.authenticate = async (req, res) => {
-  const result = validationResult(req);
-  if (!result.isEmpty()) {
-    const errors = result.array({ onlyFirstError: true });
-    return res.status(422).json({ errors });
-  }
   try {
     const { username, password } = req.body;
     const user = await User.findOne({
@@ -112,56 +102,44 @@ exports.authenticate = async (req, res) => {
   }
 };
 
-exports.listUsers = async (req, res, next) => {
-  try {
-    const { sortType = '-created' } = req.body;
-    const users = await User.find().sort(sortType);
-    res.json(users);
-  } catch (error) {
-    next(error);
+exports.listUsers = asyncWrapper(async (req, res) => {
+  const { sortType } = parsePagination(req, undefined, '-created');
+  const users = await User.find().sort(sortType);
+  res.json(users);
+});
+
+exports.search = asyncWrapper(async (req, res) => {
+  const users = await User.find({ username: { $regex: req.params.search, $options: 'i' } });
+  res.json(users);
+});
+
+exports.find = asyncWrapper(async (req, res) => {
+  const user = await User.findOne({ username: req.params.username });
+
+  if (!user) {
+    return res.status(404).json({ message: 'User not found.' });
   }
-};
 
-exports.search = async (req, res, next) => {
-  try {
-    const users = await User.find({ username: { $regex: req.params.search, $options: 'i' } });
-    res.json(users);
-  } catch (error) {
-    next(error);
-  }
-};
+  const questionCount = await Question.countDocuments({ author: user.id });
 
-exports.find = async (req, res, next) => {
-  try {
-    const user = await User.findOne({ username: req.params.username });
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
-    }
-
-    const questionCount = await Question.countDocuments({ author: user.id });
-
-    const questionsWithAnswers = await Question.find({ 'answers.author': user.id });
-    let answerCount = 0;
-    questionsWithAnswers.forEach((question) => {
-      question.answers.forEach((answer) => {
-        if (answer.author && answer.author.id === user.id) {
-          answerCount++;
-        }
-      });
+  const questionsWithAnswers = await Question.find({ 'answers.author': user.id });
+  let answerCount = 0;
+  questionsWithAnswers.forEach((question) => {
+    question.answers.forEach((answer) => {
+      if (answer.author && answer.author.id === user.id) {
+        answerCount++;
+      }
     });
+  });
 
-    const userWithStats = {
-      ...user.toJSON(),
-      questionCount,
-      answerCount
-    };
+  const userWithStats = {
+    ...user.toJSON(),
+    questionCount,
+    answerCount
+  };
 
-    res.json(userWithStats);
-  } catch (error) {
-    next(error);
-  }
-};
+  res.json(userWithStats);
+});
 
 exports.validateUser = [
   body('username')

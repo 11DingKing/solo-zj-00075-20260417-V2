@@ -25,8 +25,9 @@ const {
 } = require('./controllers/answers');
 const { listPopulerTags, searchTags, listTags } = require('./controllers/tags');
 const { upvote, downvote, unvote } = require('./controllers/votes');
-const { loadComments, validate, createComment, removeComment } = require('./controllers/comments');
+const { loadComments, validate: commentValidate, createComment, removeComment } = require('./controllers/comments');
 
+const { validate } = require('./utils');
 const requireAuth = require('./middlewares/requireAuth');
 const questionAuth = require('./middlewares/questionAuth');
 const commentAuth = require('./middlewares/commentAuth');
@@ -35,8 +36,8 @@ const answerAuth = require('./middlewares/answerAuth');
 const router = require('express').Router();
 
 //authentication
-router.post('/signup', validateUser, signup);
-router.post('/authenticate', validateUser, authenticate);
+router.post('/signup', [...validateUser, validate], signup);
+router.post('/authenticate', [...validateUser, validate], authenticate);
 
 //users
 router.get('/users', listUsers);
@@ -45,7 +46,7 @@ router.get('/user/:username', find);
 
 //questions
 router.param('question', loadQuestions);
-router.post('/questions', [requireAuth, questionValidate], createQuestion);
+router.post('/questions', [requireAuth, ...questionValidate, validate], createQuestion);
 router.get('/question/:question', show);
 router.get('/question', listQuestions);
 router.get('/questions/:tags', listByTags);
@@ -62,7 +63,7 @@ router.get('/tags', listTags);
 
 //answers
 router.param('answer', loadAnswers);
-router.post('/answer/:question', [requireAuth, answerValidate], createAnswer);
+router.post('/answer/:question', [requireAuth, ...answerValidate, validate], createAnswer);
 router.delete('/answer/:question/:answer', [requireAuth, answerAuth], removeAnswer);
 
 //votes
@@ -72,7 +73,7 @@ router.get('/votes/unvote/:question/:answer?', requireAuth, unvote);
 
 //comments
 router.param('comment', loadComments);
-router.post('/comment/:question/:answer?', [requireAuth, validate], createComment);
+router.post('/comment/:question/:answer?', [requireAuth, ...commentValidate, validate], createComment);
 router.delete('/comment/:question/:comment', [requireAuth, commentAuth], removeComment);
 router.delete('/comment/:question/:answer/:comment', [requireAuth, commentAuth], removeComment);
 
